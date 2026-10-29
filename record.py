@@ -5,9 +5,12 @@
 用法:
   python record.py finding --title "越权读他人档案" --where "api.py:5291" ^
                             --root "请求体参与安全决策" --fix "token 优先" ^
-                            [--poc tests/test_x.py] [--status 待修]
+                            [--poc tests/test_x.py] [--status 待修] [--tag vuln-001/fixed-001]
   python record.py note --text "fail-open 是根本性错误" --tag M1
   python record.py show
+
+--tag 记的是证据 tag 对。填了 tag 的「已修」才算数 —— 没有红→绿对照的修复，
+只是把洞从你看得到的地方挪到了你看不到的地方。
 
 ID 自动分配，不用自己想编号。
 """
@@ -37,14 +40,17 @@ def next_id(md: str) -> str:
 def add_finding(a) -> None:
     md = _read(FINDINGS)
     fid = next_id(md)
+    evidence = f" `{a.tag}`" if a.tag else " -"
     row = (
-        f"| {fid} | {a.title} | {a.where} | {a.root} | {a.fix} | {a.status} |"
+        f"| {fid} | {a.title} | {a.where} | {a.root} | {a.fix} | {a.status} |{evidence} |"
     )
     md = md.rstrip("\n") + "\n" + row + "\n"
     _write(FINDINGS, md)
     print(f"已记录 {fid}")
     print(f"  {a.title}")
     print(f"  位置 {a.where}")
+    if a.tag:
+        print(f"  证据 {a.tag}")
 
 
 def add_note(a) -> None:
@@ -77,6 +83,7 @@ def main() -> int:
     f.add_argument("--fix", required=True, help="修法一句话")
     f.add_argument("--poc", default="", help="PoC 文件路径")
     f.add_argument("--status", default="待修", help="待修/已修/已复现/待验证")
+    f.add_argument("--tag", default="", help="证据 tag，如 vuln-001/fixed-001")
     f.set_defaults(func=add_finding)
 
     n = sub.add_parser("note", help="记录一个概念")
