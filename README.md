@@ -97,7 +97,7 @@ tag 还能顺带解决"靶场必须永远可打"：所有 `vuln-XXX` tag 的集�
 |---|---|---|
 | **M0** | 安全的第一性原理（资产 / 信任边界 / 最小权限 / fail-open vs fail-closed） | ✅ 完成 |
 | **M1** | 认证与授权：身份三层模型（Subject / On-behalf-of / Asserted） | ✅ 完成 · 13 条漏洞 · 22 条概念 · 1 组 tag 对 |
-| **M2** | 间接提示注入与 Lethal Trifecta | ⬜ 未开始 |
+| **M2** | 间接提示注入与 Lethal Trifecta | 🟨 进行中 · 概念已过 · 动手任务进行中 |
 | **M3** | 工具调用安全与权限三层模型 | ⬜ 未开始 |
 | **M4** | 记忆与 RAG 投毒 | ⬜ 未开始 |
 | **M5** | 多智能体信任传递 | ⬜ 未开始 |
@@ -105,7 +105,7 @@ tag 还能顺带解决"靶场必须永远可打"：所有 `vuln-XXX` tag 的集�
 | **M7** | 红队方法论与评测 | ⬜ 未开始 |
 | **M8** | 护栏工程与量化 | ⬜ 未开始 |
 
-**当前产出**：[findings.md](findings.md) 13 条漏洞 · [notes.md](notes.md) 24 条概念 · [exercises/](exercises/) 4 个可复现脚本
+**当前产出**：[findings.md](findings.md) 15 条漏洞 · [notes.md](notes.md) 35 条概念 · [exercises/](exercises/) 5 个可复现脚本
 
 ---
 
@@ -125,13 +125,14 @@ git checkout vuln-001 && python tests/security/test_authz_idor.py   # 4/5 FAIL
 git checkout security-lab
 ```
 
-`exercises/` 是一条**递进的链**，不是四个独立练习：
+`exercises/` 是一条**递进的链**，不是五个独立练习：
 
 ```
 ex01  越权存在        → 理解「请求体参与安全决策」
 ex02  一个修复不够    → 理解「修复要覆盖所有入口」
 ex03  三种修法对比    → 理解「覆盖 vs 丢弃」
 ex04  白名单 + 收口   → 理解「key 白名单 + 值枚举」两道防线
+ex05  工具副作用枚举  → 理解「按名字猜危险」为什么必然漏（F-014 / F-015）
 ```
 
 ---
@@ -167,7 +168,8 @@ llm-security-roadmap/
 │   ├── ex01_idor.py               越权最小复现
 │   ├── ex02_metadata_bypass.py   第二个入口
 │   ├── ex03_fix.py                三种修法对比
-│   └── ex04_whitelist.py          白名单 + 收口
+│   ├── ex04_whitelist.py          白名单 + 收口
+│   └── ex05_tool_audit.py         工具副作用全量枚举 + 危险判定对账
 ├── 学习清单.md            ← P0–P3 知识点地图
 └── 项目清单.md            ← 12 个动手项目
 ```

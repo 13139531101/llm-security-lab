@@ -22,6 +22,8 @@
 | F-011 | selected_agent 等路由字段客户端可指定 → 自选 agent 触达更大工具集 | api.py:5293-5294, bridge.py:435-438 | 路由控制字段无枚举校验；与 F-007 组合成完整提权链 | 取值按运行时 domain manifest 枚举校验，与 F-007 一起修 | 待修 | - |
 | F-012 | metadata 白名单过滤点覆盖不全：body.selected_agent 绕过过滤 | api.py:5292-5294 | 过滤与添加分离，存在未受控入口 | 改为收口组装（单一入口） | 已修 | `vuln-001`/`fixed-001` |
 | F-013 | conversation_id 客户端可控 → 越权覆盖他人会话的 answer | api.py:5288, 5381 + `consultations` ON CONFLICT | 把客户端可控的值当成授权凭据 | 写入前校验会话归属；或服务端生成不可猜测的 session id | 待修 | - |
+| F-014 | HITL 危险判定漏项：`log_medication_taken` / `add_health_reminder` / `create_user_profile` 不被拦 | `dangerous_tools.py:23-37`（关键字判定）+ `:83`（`if cfg: return cfg` 吞掉硬编码兜底表） | 危险判定靠工具名子串匹配；manifest 分支与硬编码兜底表互斥而非合并 | 改成显式能力声明（工具自己声明 writes/egress），默认最严；manifest 与兜底表**合并**而不是互斥 | 待修 | `ex05_tool_audit.py` |
+| F-015 | 出网目标由 LLM 填的 `agent_address` 决定 → SSRF + 健康数据外泄通道 | `HealthAdvisor/mcpserver/a2a_integration_tool.py:169,199,244`（`_resolve_endpoint` / `_fetch_agent_card` 直接信任 `agent_address`） | 出网目的地是模型可填的 tool 参数，等于把出网权交给不可信输入 | 出网目标改为服务端 manifest 枚举，LLM 只能选已知 agent；外发内容做字段级脱敏 | 待修 | `ex05_tool_audit.py` |
 
 ---
 
