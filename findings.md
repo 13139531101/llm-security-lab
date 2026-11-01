@@ -45,3 +45,29 @@ CI 里配了 `tags: ['vuln-*', 'fixed-*']`，所以 **Actions 历史里也留着
 
 > F-001/F-002/F-003/F-012 是同一处根因的四个切面，在一次修复里一起关掉了——
 > 因为它们都由同一个「请求体参与安全决策」的错误造成，分开修没有意义。
+
+---
+
+## 修复落到产品分支了
+
+修复不能只活在取证分支上。2026-11-01，修复已 cherry-pick 回 **`refactor/v2`**（产品分支）：
+
+| | |
+|---|---|
+| 修复提交 | `75f71c8` fix(security): 身份只来自已验证的 token |
+| 收口模块 | `A2AServer/v2/request_identity.py`（零依赖纯函数） |
+| 门禁 | `tests/security/test_authz_idor.py` → CI 阻塞步骤 |
+| CI 运行 | [Test (15 verify scripts) · success](https://github.com/13139531101/Multi-Intelligence-Medical-Companion/actions/runs/41296576820) |
+
+产品分支上的门禁步骤：`Security gate: IDOR / identity (blocking)`，`continue-on-error: false`。
+**下一个人随手加个 `**metadata`，CI 会当场红给他看** —— 这才叫修复完成。
+
+产品分支上同样跑过一次本地红→绿对照（同一份门禁、两种状态）：
+
+```
+vuln-001  → 4/5 FAIL（exit 1）  漏洞真实存在
+refactor/v2 → 5/5 PASS（exit 0）  修复真的有效
+```
+
+> 取证在 `security-lab` 分支的 tag 对上，落地在 `refactor/v2` 的提交上。
+> 两件事分开做：前者证明「洞是真的、修的真的有用」，后者让洞在产品里真的关上。

@@ -15,7 +15,8 @@
 |---|---|
 | **项目** | 个人智能健康助手（PHA） |
 | **GitHub** | <https://github.com/13139531101/Multi-Intelligence-Medical-Companion> |
-| **取证分支** | `security-lab` |
+| **取证分支** | `security-lab`（tag 对留证） |
+| **产品分支** | `refactor/v2`（修复已落地 + CI 阻塞门禁） |
 | **本地** | `I:\A2A\3\A2AServer`（worktree: `I:\A2A\3\A2AServer-sec`） |
 | **形态** | FastAPI + LangGraph · MCP 工具层 · A2A agent 间委托 · AG-UI 界面操控 · PostgreSQL+pgvector · Redis · React |
 
@@ -77,6 +78,17 @@ tag 还能顺带解决"靶场必须永远可打"：所有 `vuln-XXX` tag 的集�
 修复本身还必须**进 CI 阻塞门禁**（`continue-on-error: false`）：
 > 修复没有门禁等于没修。下一个人随手加个 `**metadata`，洞就重开，而且没人会发现。
 
+而且修复必须**落回产品分支**。取证在 `security-lab` 的 tag 对上，落地在 `refactor/v2` 的提交上：
+
+| | |
+|---|---|
+| 修复提交 | `75f71c8`（`refactor/v2`） |
+| 收口模块 | `A2AServer/v2/request_identity.py`（零依赖纯函数） |
+| 门禁步骤 | `Security gate: IDOR / identity (blocking)` |
+| CI 证据 | [Test workflow · success](https://github.com/13139531101/Multi-Intelligence-Medical-Companion/actions/runs/41296576820) |
+
+> 只做取证不做落地，等于没修 —— 洞在产品里还开着。
+
 ---
 
 ## 📊 学习进度
@@ -93,7 +105,7 @@ tag 还能顺带解决"靶场必须永远可打"：所有 `vuln-XXX` tag 的集�
 | **M7** | 红队方法论与评测 | ⬜ 未开始 |
 | **M8** | 护栏工程与量化 | ⬜ 未开始 |
 
-**当前产出**：[findings.md](findings.md) 13 条漏洞 · [notes.md](notes.md) 22 条概念 · [exercises/](exercises/) 4 个可复现脚本
+**当前产出**：[findings.md](findings.md) 13 条漏洞 · [notes.md](notes.md) 24 条概念 · [exercises/](exercises/) 4 个可复现脚本
 
 ---
 
@@ -160,7 +172,7 @@ llm-security-roadmap/
 └── 项目清单.md            ← 12 个动手项目
 ```
 
-靶场侧（`Multi-Intelligence-Medical-Companion` 的 `security-lab` 分支）：
+靶场侧（`Multi-Intelligence-Medical-Companion`，`security-lab` 与 `refactor/v2` 都有）：
 
 ```
 tests/security/
