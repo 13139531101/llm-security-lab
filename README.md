@@ -7,6 +7,41 @@
 
 ---
 
+## 👋 这是什么
+
+**一句话**：一个智能体工程师，正用自己生产级的多智能体健康助手当靶场学 LLM 安全 ——
+边学、边挖、边修，**每个漏洞都留一份别人能自己跑出来的证据**。
+
+### 30 秒看懂这个仓库
+
+| | |
+|---|---|
+| **漏洞** | 15 个，全部带 git tag 证据对（`vuln-XXX` 红 / `fixed-XXX` 绿） |
+| **修复** | 全部落在产品分支，并接成 **CI 阻塞门禁**（`continue-on-error: false`） |
+| **笔记** | 35 条概念笔记，传统安全 + LLM 安全 |
+| **脚本** | 5 个可复现 PoC，零外部依赖，秒级跑完 |
+| **靶场** | 真实生产级多智能体项目（4 agent / 70 MCP 工具 / 13 容器），不是玩具 |
+
+### 你想找什么，这里都有
+
+| 你是 | 看这里 |
+|---|---|
+| 想要**判据** —— 怎么判断一条 LLM 防御是不是真防御 | [notes.md](notes.md) · [对外选题库](topics.md) |
+| 想要**证据** —— 漏洞怎么变成别人能自己跑出来的红→绿 | 下面的「证据链」一节 · [posts/](posts/) |
+| 想要**动手** —— 能自己跑的 PoC | [exercises/](exercises/) |
+| 想要**成品** —— 漏洞清单 | [findings.md](findings.md) |
+
+### 当前进度与下一步
+
+```
+M0 ✅  →  M1 ✅  →  M2 🟨（间接提示注入与 Lethal Trifecta）  →  M3 ⬜ … M8 ⬜
+```
+
+**下一步**：M3 工具调用安全与权限三层模型。
+**节奏**：每完成一个模块提交一次，`git log` 就是这个学习过程的叙事线 —— 那一行行的 commit message 就是这份学习档案的时间轴。
+
+---
+
 ## 🎯 靶场：本仓库所有攻击的落点
 
 所有 PoC 都在一个**真实的、多智能体的生产级项目**上打，不是玩具靶场。
@@ -105,7 +140,7 @@ tag 还能顺带解决"靶场必须永远可打"：所有 `vuln-XXX` tag 的集�
 | **M7** | 红队方法论与评测 | ⬜ 未开始 |
 | **M8** | 护栏工程与量化 | ⬜ 未开始 |
 
-**当前产出**：[findings.md](findings.md) 15 条漏洞 · [notes.md](notes.md) 35 条概念 · [exercises/](exercises/) 5 个可复现脚本
+**当前产出**：[findings.md](findings.md) 15 条漏洞 · [notes.md](notes.md) 35 条概念 · [exercises/](exercises/) 5 个可复现脚本 · [topics.md](topics.md) 对外选题库 · [posts/](posts/) 文章草稿
 
 ---
 
@@ -163,7 +198,10 @@ llm-security-roadmap/
 ├── README.md              ← 本文件
 ├── findings.md            ← 漏洞表（一行一个，ID 自动分配，含证据 tag）
 ├── notes.md               ← 概念笔记（一行一个）
+├── topics.md              ← 对外选题库（每条概念 → 一个可发的文章）
 ├── record.py              ← 记录工具
+├── posts/                 ← 对外文章草稿
+│   └── 01-evidence-chain.md        证据链方法论（怎么想，不含利用链）
 ├── exercises/             ← 可复现脚本
 │   ├── ex01_idor.py               越权最小复现
 │   ├── ex02_metadata_bypass.py   第二个入口
