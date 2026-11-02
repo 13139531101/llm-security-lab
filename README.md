@@ -18,7 +18,7 @@
 |---|---|
 | **漏洞** | 15 个，全部带 git tag 证据对（`vuln-XXX` 红 / `fixed-XXX` 绿） |
 | **修复** | 全部落在产品分支，并接成 **CI 阻塞门禁**（`continue-on-error: false`） |
-| **笔记** | 35 条概念笔记，传统安全 + LLM 安全 |
+| **笔记** | 39 条概念笔记，传统安全 + LLM 安全 |
 | **脚本** | 5 个可复现 PoC，零外部依赖，秒级跑完 |
 | **靶场** | 真实生产级多智能体项目（4 agent / 70 MCP 工具 / 13 容器），不是玩具 |
 
@@ -140,7 +140,7 @@ tag 还能顺带解决"靶场必须永远可打"：所有 `vuln-XXX` tag 的集�
 | **M7** | 红队方法论与评测 | ⬜ 未开始 |
 | **M8** | 护栏工程与量化 | ⬜ 未开始 |
 
-**当前产出**：[findings.md](findings.md) 15 条漏洞 · [notes.md](notes.md) 35 条概念 · [exercises/](exercises/) 5 个可复现脚本 · [topics.md](topics.md) 对外选题库 · [posts/](posts/) 文章草稿
+**当前产出**：[findings.md](findings.md) 15 条漏洞 · [notes.md](notes.md) 39 条概念 · [exercises/](exercises/) 5 个可复现脚本 · [topics.md](topics.md) 对外选题库 · [posts/](posts/) 文章草稿
 
 ---
 
