@@ -208,6 +208,7 @@ llm-security-roadmap/
 │   ├── ex03_fix.py                三种修法对比
 │   ├── ex04_whitelist.py          白名单 + 收口
 │   └── ex05_tool_audit.py         工具副作用全量枚举 + 危险判定对账
+├── 自检题.md              ← 每模块自检题（只记题不记答案）
 ├── 学习清单.md            ← P0–P3 知识点地图
 └── 项目清单.md            ← 12 个动手项目
 ```
