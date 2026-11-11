@@ -16,10 +16,10 @@
 
 | | |
 |---|---|
-| **漏洞** | 17 个，其中 2 组已修并带 git tag 证据对（`vuln-XXX` 红 / `fixed-XXX` 绿） |
+| **漏洞** | 20 个，其中 2 组已修并带 git tag 证据对（`vuln-XXX` 红 / `fixed-XXX` 绿） |
 | **修复** | 全部落在产品分支，并接成 **CI 阻塞门禁**（`continue-on-error: false`） |
-| **笔记** | 55 条概念笔记，传统安全 + LLM 安全 |
-| **脚本** | 7 个可复现 PoC，零外部依赖，秒级跑完 |
+| **笔记** | 64 条概念笔记，传统安全 + LLM 安全 |
+| **脚本** | 8 个可复现 PoC，前 7 个零外部依赖、秒级跑完；ex08 需要靶场 venv（它 import 靶场真代码） |
 | **靶场** | 真实生产级多智能体项目（4 agent / 70 MCP 工具 / 13 容器），不是玩具 |
 
 ### 你想找什么，这里都有
@@ -137,7 +137,7 @@ tag 还能顺带解决"靶场必须永远可打"：所有 `vuln-XXX` tag 的集�
 |---|---|---|
 | **M0** | 安全的第一性原理（资产 / 信任边界 / 最小权限 / fail-open vs fail-closed） | ✅ 完成 |
 | **M1** | 认证与授权：身份三层模型（Subject / On-behalf-of / Asserted） | ✅ 完成 · 13 条漏洞 · 22 条概念 · 1 组 tag 对 |
-| **M2** | 间接提示注入与 Lethal Trifecta | 🟨 进行中 · 概念已过 · ex05–ex07 已落地 · 动手任务 3 进行中 |
+| **M2** | 间接提示注入与 Lethal Trifecta | 🟨 进行中 · 概念已过 · ex05–ex08 已落地 · 动手任务已收尾 · 自检题待复述 |
 | **M3** | 工具调用安全与权限三层模型 | ⬜ 未开始 |
 | **M4** | 记忆与 RAG 投毒 | ⬜ 未开始 |
 | **M5** | 多智能体信任传递 | ⬜ 未开始 |
@@ -145,7 +145,7 @@ tag 还能顺带解决"靶场必须永远可打"：所有 `vuln-XXX` tag 的集�
 | **M7** | 红队方法论与评测 | ⬜ 未开始 |
 | **M8** | 护栏工程与量化 | ⬜ 未开始 |
 
-**当前产出**：[findings.md](findings.md) 17 条漏洞 · [notes.md](notes.md) 55 条概念 · [exercises/](exercises/) 7 个可复现脚本 · [specs/](specs/) 工具能力声明规格 · [topics.md](topics.md) 对外选题库 · [posts/](posts/) 文章草稿
+**当前产出**：[findings.md](findings.md) 20 条漏洞 · [notes.md](notes.md) 64 条概念 · [exercises/](exercises/) 8 个可复现脚本 · [specs/](specs/) 工具能力声明规格 · [topics.md](topics.md) 对外选题库 · [posts/](posts/) 文章草稿
 
 ---
 
@@ -163,9 +163,13 @@ PYTHONIOENCODING=utf-8 "I:/A2A/3/A2AServer/.venv/Scripts/python.exe" tests/secur
 # ③ 回到漏洞那一刻，看它变红
 git checkout vuln-001 && python tests/security/test_authz_idor.py   # 4/5 FAIL
 git checkout security-lab
+
+# ④ 跑注入链 PoC（会真的发一次请求，但只打本机 loopback）
+PYTHONIOENCODING=utf-8 "I:/A2A/3/A2AServer/.venv/Scripts/python.exe" \
+    I:/llm-security-roadmap/exercises/ex08_injection_chain.py
 ```
 
-`exercises/` 是一条**递进的链**，不是五个独立练习：
+`exercises/` 是一条**递进的链**，不是八个独立练习：
 
 ```
 ex01  越权存在        → 理解「请求体参与安全决策」
@@ -175,7 +179,12 @@ ex04  白名单 + 收口   → 理解「key 白名单 + 值枚举」两道防线
 ex05  工具副作用枚举  → 理解「按名字猜危险」为什么必然漏（F-014 / F-015）
 ex06  能力声明初稿    → 理解「机器生成初稿 + 人工审阅」为什么比手写可靠
 ex07  HITL fail-closed → 理解「判定失效」为什么不能靠 logger.error 解决（F-017）
+ex08  注入链（尾=F-015）→ 理解「不可信内容获得了决定权」是怎么发生的
 ```
+
+> ex08 跟前 7 条不一样：它 **import 靶场的真实代码**并真的发一次请求（到本机 loopback），
+> 所以需要靶场的 venv。它的输出会随靶场代码变化 —— 靶场改了它会当场退出，而不是演一出
+> 不存在的戏。
 
 ---
 
@@ -216,7 +225,8 @@ llm-security-roadmap/
 │   ├── ex04_whitelist.py          白名单 + 收口
 │   ├── ex05_tool_audit.py         工具副作用全量枚举 + 危险判定对账
 │   ├── ex06_capability_draft.py   由 AST 实测生成「工具能力声明」初稿
-│   └── ex07_hitl_fail_closed.py   HITL 判定失效 → fail-closed 三段阶梯
+│   ├── ex07_hitl_fail_closed.py   HITL 判定失效 → fail-closed 三段阶梯
+│   └── ex08_injection_chain.py    注入链四环 PoC（尾 = F-015，真跑到出网）
 ├── specs/                 ← 可落地的规格（零依赖，可进 CI 门禁）
 │   ├── tool_capabilities.py       能力表 + HITL 推导（纯函数，零依赖）
 │   ├── tool_capabilities.md       规格：字段定义 / 推导规则 / 合并算法 / 迁移路径
