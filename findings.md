@@ -25,6 +25,7 @@
 | F-014 | HITL 危险判定漏项：`log_medication_taken` / `add_health_reminder` / `create_user_profile` 不被拦 | `dangerous_tools.py:23-37`（关键字判定）+ `:83`（`if cfg: return cfg` 吞掉硬编码兜底表） | 危险判定靠工具名子串匹配；manifest 分支与硬编码兜底表互斥而非合并 | 改成显式能力声明（工具自己声明 writes/egress），默认最严；manifest 与兜底表**合并**而不是互斥 | 待修 | `ex05_tool_audit.py` |
 | F-015 | 出网目标由 LLM 填的 `agent_address` 决定 → SSRF + 健康数据外泄通道 | `HealthAdvisor/mcpserver/a2a_integration_tool.py:169,199,244`（`_resolve_endpoint` / `_fetch_agent_card` 直接信任 `agent_address`） | 出网目的地是模型可填的 tool 参数，等于把出网权交给不可信输入 | 出网目标改为服务端 manifest 枚举，LLM 只能选已知 agent；外发内容做字段级脱敏 | 待修 | `ex05_tool_audit.py` |
 | F-016 | 模型经 AG-UI `askAgent` 动作自选 agent + 自选问题，前端用**用户自己的 token** 转发 → 跨 agent 提权 + 第二条注入通道 | 后端 `PhaCore/mcpserver/shared_page_control.py:201-223`（`ask_agent_in_page(agent_name, question)` 两个参数都由 LLM 填）→ 前端 `Dashboard.jsx:433-435,263-305`（`handleAskAgent` 发 `POST /v2/chat/stream`，带 `Authorization: Bearer <用户 token>` + `metadata.selected_agent`）→ 后端 `request_identity.py:34`（`selected_agent` 在客户端白名单里）→ `host_graph.py:189-233`（第 1 层路由直接认它） | 副作用发生在**工具进程之外**：工具不碰库、不发 HTTP，但它的 payload 被前端执行，于是「模型 → 前端 → agent」变成模型自己的一条委托通道。这条通道**绕过工具层的全部判定**（前端不知道自己在替谁问），且委托出去的动作受**被委托 agent** 的规则管，不受发起 agent 的规则管 —— 混淆代理 + 跨 agent 提权 | ① `askAgent` 归入 `delegate` 档并进 HITL（内容来自 LLM 时必须人工确认）；② 委托的 agent 由**服务端**按当前 agent 的权限集决定，不由前端 `metadata.selected_agent` 决定；③ 委托请求与用户本人发起的请求在协议上可区分（带不可伪造的服务端签名标记） | 待修（源码链路已核实，运行时未复现） | `ex06_capability_draft.py` |
+| F-017 | HITL 判定链路的 4 个静默降级点 → 判定失效时**全部危险操作无人确认直接执行**，而且没人知道 | `v2_runtime.py` HITL 段：① 工具发现 `except: pass` ② manifest 读失败 `logger.debug` ③ `get_interrupt_config` 抛异常 `except: pass` ④ `HumanInTheLoopMiddleware` 装不上 `logger.debug` | fail-open 的第四种马甲：判定/拦截失效后的默认行为是「照常跑」；而 `logger.debug` 在默认日志级别下**看不见** —— 静默降级 = 静默失守。第 ④ 点最隐蔽：它就在「装 HITL」这一步失败时触发，即「想保护而没保护成」这个状态本身最静默 | fail-closed 的三段阶梯：① HITL 正常 → 照常；② HITL 装不上但判定器可用 → **受保护的工具不交给模型**（fail-closed 的形态是「不给」不是「拦」，因为拦截器就是 HITL）；③ 判定器本身不可用 → 拒绝启动（fail-fast）；④ 降级必须 `logger.error` 可见、状态按 agent 分键存 | 已修 | `vuln-017`/`fixed-017` |
 
 ---
 
@@ -74,3 +75,35 @@ refactor/v2 → 5/5 PASS（exit 0）  修复真的有效
 
 > 取证在 `security-lab` 分支的 tag 对上，落地在 `refactor/v2` 的提交上。
 > 两件事分开做：前者证明「洞是真的、修的真的有用」，后者让洞在产品里真的关上。
+
+---
+
+## F-017 的证据链（第二条 tag 对）
+
+| | |
+|---|---|
+| 取证分支 | `security-lab` |
+| 红 tag | `vuln-017` → `974467f`（只加门禁，代码仍是有洞的） |
+| 绿 tag | `fixed-017` → `fdae7ba`（加上修复） |
+| 产品分支 | `refactor/v2` → `e90aede`（修复 + 门禁一起落） |
+| 门禁文件 | `tests/security/test_hitl_fail_closed.py` → CI 阻塞步骤 |
+| CI 步骤名 | `Security gate: HITL fail-closed (blocking)`，`continue-on-error: false` |
+
+同一份文件、同一条命令、两种结果：
+
+```bash
+git checkout vuln-017  && python tests/security/test_hitl_fail_closed.py   # 6/7 FAIL（exit 1）
+git checkout fixed-017 && python tests/security/test_hitl_fail_closed.py   # 7/7 PASS（exit 0）
+```
+
+七条不变式里最值得看的两条：
+
+- **第 2 条「正常路径不摘工具」** —— 防的是「为了安全把功能砍光」。fail-closed
+  很容易被实现成「全都拦」，那是审批疲劳：人在场，但闭眼点同意，是 fail-open 的变体。
+- **第 6 条「降级必须可见 + 必须接线」** —— 用静态检查读源码，因为
+  「没接线的控制点等于不存在」（F-007 已经付过一次学费）。
+
+> ⚠️ 这条门禁**不能**靠「把 `logger.debug` 改成 `logger.error`」变绿。
+> 可见性不是防御：降级时危险工具照样被模型看见、照样被调用。
+> 真正让门禁变绿的是 `v2/hitl_guard.py` + `v2_agent.py` 的接线。
+
