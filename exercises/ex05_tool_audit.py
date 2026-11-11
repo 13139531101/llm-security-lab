@@ -117,6 +117,16 @@ EGRESS_HELPERS = {
 FILE_WRITE_FUNCS = {"remove", "unlink", "rmtree", "write_text", "write_bytes", "mkdir"}
 MOCK_MARKERS = ("模拟", "mock", "假实现", "暂时不", "后续阶段", "待实现")
 
+# ── AG-UI 前端动作通道 ──────────────────────────────────────────
+# 这类工具**不碰数据库、不发 HTTP**，但它返回的 `page_update.actions`
+# 会被**前端**执行 —— 副作用发生在工具进程之外。
+# 只扫 DB/HTTP/文件 的扫描器会把它判成"只读"，这是系统性漏报：
+#   set_health_records_search → 前端搜索框被改成模型填的字符串
+#   show_page_alert          → 任意文本被弹到用户屏幕上
+#   ask_agent_in_page        → 前端替模型去问另一个 agent（模型自选的 agent + 自选的问题）
+UI_ACTION_HELPER = "_act"
+UI_ACTION_MARKERS = {"page_update", "actions"}
+
 
 class EffectScanner:
     """跨文件解析 helper 调用，把副作用追到底。"""
@@ -151,6 +161,16 @@ class EffectScanner:
                     effects.add("DB_DDL")
                 elif SQL_WRITE_RE.search(text):
                     effects.add("DB_WRITE")
+            # AG-UI：字面量 payload 形如 {"page_update": {"actions": [...]}}
+            # ⚠️ 这一段必须在下面的 `continue` **之前** —— 之前放在后面是死代码，
+            #    导致只写字面量 payload 的工具（open_health_record 等）漏报 UI 副作用。
+            if isinstance(node, ast.Dict):
+                for k in node.keys:
+                    # 只认 "page_update" 这个顶层包装 —— 它是前端契约的固定形状
+                    # （pageContract.js: page_update.actions[]）。
+                    # 单看 "actions" 太松，容易撞上业务数据里的同名字段。
+                    if isinstance(k, ast.Constant) and k.value == "page_update":
+                        effects.add("UI_WRITE")
             if not isinstance(node, ast.Call):
                 continue
             f = node.func
@@ -184,6 +204,9 @@ class EffectScanner:
                         modes.append(str(kw.value.value))
                 if any(m.startswith(("w", "a")) for m in modes):
                     effects.add("FILE_WRITE")
+            # AG-UI：构造前端动作 payload
+            if isinstance(f, ast.Name) and f.id == UI_ACTION_HELPER:
+                effects.add("UI_WRITE")
         return effects
 
     # ---------- 递归（跟进 helper，含"函数当参数传"的情况） ----------
@@ -210,20 +233,32 @@ class EffectScanner:
         ★ 必须扫源码文本，不能只扫 AST 常量 ——
           「# 模拟保存通知偏好（实际应用中应保存到数据库）」是**注释**，
           注释根本不在 AST 里。只扫 AST 会漏掉最典型的那个信号。
+
+        ★★ 但**只能看注释，不能看字符串字面量**（2026-11-11 修正）——
+          `get_health_tips` 的返回文案里写着「当前工具不再提供**模拟**建议」，
+          这不是在说"这个工具是模拟实现"，而是在说"它不再提供假数据"。
+          关键词匹配分不清这两种语义 → 误报。
+          用 tokenize 只取 COMMENT token，字符串归字符串、注释归注释。
         """
         src = self.src_of.get(id(fn))
-        text = ""
-        if src:
-            try:
-                text = ast.get_source_segment(src, fn) or ""
-            except Exception:
-                text = ""
-        if not text:
-            for node in ast.walk(fn):
-                if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                    text += node.value + "\n"
-        low = text.lower()
-        return any(m.lower() in low for m in MOCK_MARKERS)
+        if not src:
+            return False
+        lo = fn.lineno
+        hi = getattr(fn, "end_lineno", None) or fn.lineno
+        try:
+            import io
+            import tokenize
+            for tok in tokenize.generate_tokens(io.StringIO(src).readline):
+                if tok.type != tokenize.COMMENT:
+                    continue
+                if not (lo <= tok.start[0] <= hi):
+                    continue
+                low = tok.string.lower()
+                if any(m.lower() in low for m in MOCK_MARKERS):
+                    return True
+        except Exception:
+            return False
+        return False
 
     # ---------- 出网目标的来源（taint analysis） ----------
     def egress_target_is_llm_controlled(self, fn: ast.AST, depth: int = 3) -> bool:
@@ -333,6 +368,117 @@ class EffectScanner:
         for sub in ast.walk(node):
             if isinstance(sub, ast.Name) and sub.id in tainted:
                 return True
+        return False
+
+    def ui_actions_of(self, fn: ast.AST, depth: int = 2, _seen=None) -> tuple[str, ...]:
+        """该工具会派发哪些**前端动作名**（去重、保序）。
+
+        动作名是**有限可枚举**的（见 specs/tool_capabilities.py 的 UI_ACTION_RISK），
+        这正是它比"写库/出网"好判定的地方 —— 协议说清楚了有哪些动作，
+        我们只需要回答"这个工具会发哪几个"。
+        """
+        if _seen is None:
+            _seen = set()
+        if id(fn) in _seen or depth <= 0:
+            return ()
+        _seen.add(id(fn))
+
+        acts: list[str] = []
+        for node in ast.walk(fn):
+            # 写法一：_act(component, "actionName", {...})
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                    and node.func.id == UI_ACTION_HELPER):
+                if len(node.args) >= 2 and isinstance(node.args[1], ast.Constant) \
+                        and isinstance(node.args[1].value, str):
+                    name = node.args[1].value
+                    if name not in acts:
+                        acts.append(name)
+                continue
+            # 写法二：{"component": ..., "action": "actionName", "params": {...}}
+            #         —— 同一套协议，两种写法都必须认
+            #
+            # ⚠️ 必须**同时**有 "component" 和 "action" 两个键才算前端动作。
+            #    只看 "action" 会误报 —— `detect_health_alerts` 返回的告警列表里
+            #    每条都有 {"action": "建议立即就医"}，那是**数据字段**（建议怎么做），
+            #    不是前端动作。前端动作一定有 component（要发给哪个组件）。
+            if isinstance(node, ast.Dict):
+                keys = {k.value for k in node.keys
+                        if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+                if not {"component", "action"} <= keys:
+                    continue
+                for k, v in zip(node.keys, node.values):
+                    if (isinstance(k, ast.Constant) and k.value == "action"
+                            and isinstance(v, ast.Constant)
+                            and isinstance(v.value, str)):
+                        if v.value not in acts:
+                            acts.append(v.value)
+        if acts:
+            return tuple(acts)
+
+        # 本函数没直接发动作 → 跟进 helper
+        for node in ast.walk(fn):
+            if isinstance(node, ast.Name):
+                helper = self.global_helpers.get(node.id)
+                if helper is not None and id(helper) not in _seen:
+                    acts.extend(self.ui_actions_of(helper, depth - 1, _seen))
+        return tuple(dict.fromkeys(acts))
+
+    # ---------- AG-UI：LLM 内容是否进入前端 ----------
+    def ui_content_from_llm(self, fn: ast.AST) -> bool:
+        """
+        工具会不会把 **LLM 填的内容**送进前端？
+
+        AG-UI 的动作 payload 形如
+            {"component": "healthRecords", "action": "setSearch", "params": {"q": ...}}
+        前端拿到就照着执行 —— params 里是什么字符串，
+        屏幕 / 搜索框 / 对话框里就出现什么字符串。
+
+        三种后果，严重性递增：
+            setSearch({"q": <LLM>})     → 搜索框被改成模型写的字符串
+            showAlert({"message": <LLM>}) → 任意文本弹到用户眼前（钓鱼文本）
+            askAgent({"question": <LLM>}) → **前端替模型去问另一个 agent**
+
+        第三种最重：它把"模型 → 前端 → agent"变成了模型自己的一条出网/委托通道，
+        而这条通道**绕过了工具层的一切判定** —— 前端根本不知道自己在替谁问。
+
+        做法：工具参数做污点源 → 局部赋值传播 → 看 `_act(...)` 的 params 字典。
+        """
+        params = {a.arg for a in list(fn.args.posonlyargs) + list(fn.args.args)
+                  + list(fn.args.kwonlyargs)}
+        tainted = set(params)
+
+        # 局部赋值传播（`text = (message or "").strip()` 这类）
+        for _ in range(3):
+            for node in ast.walk(fn):
+                if isinstance(node, ast.Assign):
+                    names = {t.id for t in node.targets if isinstance(t, ast.Name)}
+                    if names and self._expr_tainted(node.value, tainted):
+                        tainted |= names
+                elif (isinstance(node, ast.AnnAssign)
+                      and isinstance(node.target, ast.Name) and node.value is not None):
+                    if self._expr_tainted(node.value, tainted):
+                        tainted.add(node.target.id)
+
+        for node in ast.walk(fn):
+            # 写法一：_act(component, "actionName", {"k": <LLM>})
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                    and node.func.id == UI_ACTION_HELPER):
+                if len(node.args) < 3:
+                    continue
+                d = node.args[2]
+                if isinstance(d, ast.Dict):
+                    for v in d.values:
+                        if self._expr_tainted(v, tainted):
+                            return True
+                continue
+            # 写法二：{"action": "...", "params": {"k": <LLM>}}
+            if isinstance(node, ast.Dict):
+                for k, v in zip(node.keys, node.values):
+                    if isinstance(k, ast.Constant) and k.value == "params" \
+                            and isinstance(v, ast.Dict):
+                        for pv in v.values:
+                            if self._expr_tainted(pv, tainted):
+                                return True
         return False
 
 
