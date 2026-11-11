@@ -16,10 +16,10 @@
 
 | | |
 |---|---|
-| **漏洞** | 15 个，全部带 git tag 证据对（`vuln-XXX` 红 / `fixed-XXX` 绿） |
+| **漏洞** | 16 个，全部带 git tag 证据对（`vuln-XXX` 红 / `fixed-XXX` 绿） |
 | **修复** | 全部落在产品分支，并接成 **CI 阻塞门禁**（`continue-on-error: false`） |
-| **笔记** | 41 条概念笔记，传统安全 + LLM 安全 |
-| **脚本** | 5 个可复现 PoC，零外部依赖，秒级跑完 |
+| **笔记** | 50 条概念笔记，传统安全 + LLM 安全 |
+| **脚本** | 6 个可复现 PoC，零外部依赖，秒级跑完 |
 | **靶场** | 真实生产级多智能体项目（4 agent / 70 MCP 工具 / 13 容器），不是玩具 |
 
 ### 你想找什么，这里都有
@@ -140,7 +140,7 @@ tag 还能顺带解决"靶场必须永远可打"：所有 `vuln-XXX` tag 的集�
 | **M7** | 红队方法论与评测 | ⬜ 未开始 |
 | **M8** | 护栏工程与量化 | ⬜ 未开始 |
 
-**当前产出**：[findings.md](findings.md) 15 条漏洞 · [notes.md](notes.md) 41 条概念 · [exercises/](exercises/) 5 个可复现脚本 · [topics.md](topics.md) 对外选题库 · [posts/](posts/) 文章草稿
+**当前产出**：[findings.md](findings.md) 16 条漏洞 · [notes.md](notes.md) 50 条概念 · [exercises/](exercises/) 6 个可复现脚本 · [specs/](specs/) 工具能力声明规格 · [topics.md](topics.md) 对外选题库 · [posts/](posts/) 文章草稿
 
 ---
 
@@ -168,6 +168,7 @@ ex02  一个修复不够    → 理解「修复要覆盖所有入口」
 ex03  三种修法对比    → 理解「覆盖 vs 丢弃」
 ex04  白名单 + 收口   → 理解「key 白名单 + 值枚举」两道防线
 ex05  工具副作用枚举  → 理解「按名字猜危险」为什么必然漏（F-014 / F-015）
+ex06  能力声明初稿    → 理解「机器生成初稿 + 人工审阅」为什么比手写可靠
 ```
 
 ---
@@ -207,7 +208,13 @@ llm-security-roadmap/
 │   ├── ex02_metadata_bypass.py   第二个入口
 │   ├── ex03_fix.py                三种修法对比
 │   ├── ex04_whitelist.py          白名单 + 收口
-│   └── ex05_tool_audit.py         工具副作用全量枚举 + 危险判定对账
+│   ├── ex05_tool_audit.py         工具副作用全量枚举 + 危险判定对账
+│   └── ex06_capability_draft.py   由 AST 实测生成「工具能力声明」初稿
+├── specs/                 ← 可落地的规格（零依赖，可进 CI 门禁）
+│   ├── tool_capabilities.py       能力表 + HITL 推导（纯函数，零依赖）
+│   ├── tool_capabilities.md       规格：字段定义 / 推导规则 / 合并算法 / 迁移路径
+│   ├── capabilities_draft.py      机器生成的初稿（人工待审）
+│   └── test_tool_capabilities.py  28 条不变量测试（秒级跑完）
 ├── 自检题.md              ← 每模块自检题（只记题不记答案）
 ├── 学习清单.md            ← P0–P3 知识点地图
 └── 项目清单.md            ← 12 个动手项目
