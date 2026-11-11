@@ -9,16 +9,26 @@
       （如 health_records / medication_schedule）需要人工细化；
    2. mock 工具的 `writes` 留空 —— 它被实现的那天，CI 对账会红；
    3. `ui_content_from_llm` 是污点分析的近似结果，要人眼确认一遍；
-   4. 每条都过一遍，改完把 TODO 去掉。
+   4. 每条都过一遍，改完把 TODO 去掉；
+   5. **本表只覆盖「注册面」（@mcp.tool()），不覆盖「提示词」** ——
+      提示词是给人写的、机器校验不了的那份能力清单，两边会漂。
+      靶场里的现成例子：`get_health_records_overview` 在
+      `HealthAdvisor/memory_enhanced_agent_prompt.md:57,73,84` 被点名要调，
+      但 `a2a_integration_tool.py:153` 上**没有 @mcp.tool()** → 运行时不存在，
+      模型按提示词发起的调用必然失败；而那个函数内部还埋着必崩的 NameError
+      和一次「崩之前的出网」——补一个装饰器就同时复活两者。
+      所以：**审这份表的同时，要对一遍提示词**（F-020）。
 
 字段语义见 specs/tool_capabilities.py 的 `Capability` 定义，
 规则与合并算法见 specs/tool_capabilities.md。
 
-三处**不靠名字、只靠实测**才能看出来的例子（先读这三个再填表）：
+四处**不靠名字、只靠实测**才能看出来的例子（先读这几个再填表）：
    · list_medical_kb_documents —— 名字是只读动词，但它调的 `_ensure_rag_schema`
      会执行 CREATE TABLE / ALTER TABLE → ddl=True
    · get_medication_overview 等 4 个 —— 名字是 get，但出网目标由 LLM 填
    · ask_agent_in_page —— 不碰库、不发 HTTP，但前端会替它发起一次 agent 调用
+   · get_health_records_overview —— 名字像工具，但**根本没注册**，只有提示词在叫它；
+     AST 扫注册面时正确地漏掉了它，所以它不进这张表（漏得对）
 """
 from __future__ import annotations
 
