@@ -4,6 +4,10 @@
 > 详细 PoC 放 A2AServer 的 `tests/security/`。
 > 状态：`待修` / `已修` / `已复现` / `待确认`
 > 证据：对应的 git tag 对（`vuln-XXX` 红 / `fixed-XXX` 绿）——没有证据标签的「已修」等于没修。
+>
+> **怎么从这张表回到根因**：按五个根因家族归类见 [方法论.md](方法论.md) 第二节；
+> 每个洞是怎么被判定、又是怎么修的（同仓库已有的正确写法 / 失败时更严还是更松 /
+> 能不能写成门禁）见同文件第一、四节。
 
 **靶场**：<https://github.com/13139531101/Multi-Intelligence-Medical-Companion>（分支 `security-lab`）
 
