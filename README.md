@@ -26,6 +26,7 @@
 
 | 你是 | 看这里 |
 |---|---|
+| 想要**自测** —— 学完了吗，考一下 | [题库.md](题库.md)（29 题 + 答案 + 判据 + 出处） |
 | 想要**方法** —— 一个洞怎么从「看着像」变成「修好了」 | [方法论.md](方法论.md)（六步流程 + 四个修法判据） |
 | 想要**判据** —— 怎么判断一条 LLM 防御是不是真防御 | [notes.md](notes.md) · [对外选题库](topics.md) |
 | 想要**证据** —— 漏洞怎么变成别人能自己跑出来的红→绿 | 下面的「证据链」一节 · [posts/](posts/) |
@@ -146,7 +147,7 @@ tag 还能顺带解决"靶场必须永远可打"：所有 `vuln-XXX` tag 的集�
 | **M7** | 红队方法论与评测 | ⬜ 未开始 |
 | **M8** | 护栏工程与量化 | ⬜ 未开始 |
 
-**当前产出**：[findings.md](findings.md) 20 条漏洞 · [notes.md](notes.md) 66 条概念 · [方法论.md](方法论.md) 挖洞与修复流程 · [exercises/](exercises/) 8 个可复现脚本 · [specs/](specs/) 工具能力声明规格 · [topics.md](topics.md) 对外选题库 · [posts/](posts/) 文章草稿
+**当前产出**：[findings.md](findings.md) 20 条漏洞 · [notes.md](notes.md) 66 条概念 · [方法论.md](方法论.md) 挖洞与修复流程 · [题库.md](题库.md) 29 题自测库 · [exercises/](exercises/) 8 个可复现脚本 · [specs/](specs/) 工具能力声明规格 · [topics.md](topics.md) 对外选题库 · [posts/](posts/) 文章草稿
 
 ---
 
@@ -214,6 +215,7 @@ python record.py show          # 看进度
 llm-security-roadmap/
 ├── README.md              ← 本文件
 ├── 方法论.md              ← 挖洞与修复的可重复流程（判断依据，不含利用链）
+├── 题库.md                ← 自测题库（29 题 + 答案 + 判据 + 出处）
 ├── findings.md            ← 漏洞表（一行一个，ID 自动分配，含证据 tag）
 ├── notes.md               ← 概念笔记（一行一个）
 ├── topics.md              ← 对外选题库（每条概念 → 一个可发的文章）
@@ -290,6 +292,7 @@ backend/A2AServer/src/A2AServer/v2/
 
 - [findings.md](findings.md) — 漏洞记录表（持续追加，含证据 tag）
 - [方法论.md](方法论.md) — **挖洞与修复的可重复流程**：六步走 + 根因家族 + 修法四判据
+- [题库.md](题库.md) — **自测题库**：方法论判据 + M2 概念 + 错误答案识别 + 实操题
 - [notes.md](notes.md) — 概念笔记（持续追加）
 - [record.py](record.py) — 记录工具
 - [exercises/](exercises/) — 可复现脚本
