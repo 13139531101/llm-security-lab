@@ -221,7 +221,8 @@ llm-security-roadmap/
 ├── topics.md              ← 对外选题库（每条概念 → 一个可发的文章）
 ├── record.py              ← 记录工具
 ├── posts/                 ← 对外文章草稿
-│   └── 01-evidence-chain.md        证据链方法论（怎么想，不含利用链）
+│   ├── 01-evidence-chain.md        证据链方法论（怎么想，不含利用链）· ✅ 知乎第一篇
+│   └── 02-can-it-be-a-gate.md      防御能不能写成门禁 · 🟨 知乎第二篇待发
 ├── exercises/             ← 可复现脚本
 │   ├── ex01_idor.py               越权最小复现
 │   ├── ex02_metadata_bypass.py   第二个入口
