@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 .venv/
 .sec_msgs/
+
+# 修复版依赖是本地 pip --target 装出来的，不入库（体积大、机器相关）。
+# 装法见 exercises/_fixed_deps.py，一条命令可重建。
+deps/fixed/
+deps/fixed.json

@@ -19,7 +19,7 @@
 | **漏洞** | 22 个，其中 2 组已修并带 git tag 证据对（`vuln-XXX` 红 / `fixed-XXX` 绿） |
 | **修复** | 全部落在产品分支，并接成 **CI 阻塞门禁**（`continue-on-error: false`） |
 | **笔记** | 70 条概念笔记，传统安全 + LLM 安全 |
-| **脚本** | 10 个可复现 PoC，前 7 个零外部依赖、秒级跑完；ex08 需要靶场 venv（它 import 靶场真代码）；ex09 扫靶场全仓 AST；ex10 是间隔复习器（抽题 + 判据计分 + 遗忘曲线） |
+| **脚本** | 12 个可复现 PoC，前 7 个零外部依赖、秒级跑完；ex08 需要靶场 venv（它 import 靶场真代码）；ex09 扫靶场全仓 AST；ex10 是间隔复习器；ex11 查公开漏洞（OSV）；ex12 复现一条真实 CVE 的红→绿对 |
 | **靶场** | 真实生产级多智能体项目（4 agent / 70 MCP 工具 / 13 容器），不是玩具 |
 
 ### 你想找什么，这里都有
@@ -32,6 +32,7 @@
 | 想要**判据** —— 怎么判断一条 LLM 防御是不是真防御 | [notes.md](notes.md) · [对外选题库](topics.md) |
 | 想要**证据** —— 漏洞怎么变成别人能自己跑出来的红→绿 | 下面的「证据链」一节 · [posts/](posts/) |
 | 想要**动手** —— 能自己跑的 PoC | [exercises/](exercises/) |
+| 想要**盯漏洞** —— 依赖今天又中了什么 | [deps/审计报告.md](deps/审计报告.md) · 跑 `exercises/ex11_dep_audit.py --diff` |
 | 想要**成品** —— 漏洞清单 | [findings.md](findings.md) |
 
 ### 当前进度与下一步
@@ -149,7 +150,7 @@ tag 还能顺带解决"靶场必须永远可打"：所有 `vuln-XXX` tag 的集�
 | **M7** | 红队方法论与评测 | ⬜ 未开始 |
 | **M8** | 护栏工程与量化 | ⬜ 未开始 |
 
-**当前产出**：[findings.md](findings.md) 22 条漏洞 · [notes.md](notes.md) 70 条概念 · [方法论.md](方法论.md) 挖洞与修复流程 · [题库.md](题库.md) 42 题自测库 · [判据卡.md](判据卡.md) 35 张判据卡 + [迁移题.md](迁移题.md) 10 道诊断题 · [exercises/](exercises/) 10 个可复现脚本 · [specs/](specs/) 工具能力声明规格 · [topics.md](topics.md) 对外选题库 · [posts/](posts/) 文章草稿
+**当前产出**：[findings.md](findings.md) 22 条漏洞 · [notes.md](notes.md) 70 条概念 · [方法论.md](方法论.md) 挖洞与修复流程 · [题库.md](题库.md) 42 题自测库 · [判据卡.md](判据卡.md) 36 张判据卡 + [迁移题.md](迁移题.md) 10 道诊断题 · [exercises/](exercises/) 12 个可复现脚本 · [deps/审计报告.md](deps/审计报告.md) 依赖 × 公开漏洞对照（382 条命中）· [specs/](specs/) 工具能力声明规格 · [topics.md](topics.md) 对外选题库 · [posts/](posts/) 文章草稿
 
 ---
 
@@ -218,6 +219,10 @@ PYTHONIOENCODING=utf-8 "I:/A2A/3/A2AServer/.venv/Scripts/python.exe" \
 # ⑤ 每天 15 分钟复习（先答后看，按遗忘曲线排期）
 PYTHONIOENCODING=utf-8 "I:/A2A/3/A2AServer/.venv/Scripts/python.exe" \
     I:/llm-security-roadmap/exercises/ex10_review.py
+
+# ⑥ 看靶场依赖今天又中了哪些公开漏洞
+PYTHONIOENCODING=utf-8 "I:/A2A/3/A2AServer/.venv/Scripts/python.exe" \
+    I:/llm-security-roadmap/exercises/ex11_dep_audit.py --diff
 ```
 
 `exercises/` 是一条**递进的链**，不是十个独立练习：
@@ -233,6 +238,8 @@ ex07  HITL fail-closed → 理解「判定失效」为什么不能靠 logger.err
 ex08  注入链（尾=F-015）→ 理解「不可信内容获得了决定权」是怎么发生的
 ex09  权限三层盘点    → 理解「机器只能给有证据/无证据」和「人判怎么对账」（F-021 / F-022）
 ex10  间隔复习器      → 理解「会答 ≠ 记得住」：抽题 → 先答后看 → 按遗忘曲线排下次
+ex11  依赖漏洞盘点    → 理解「版本命中 ≠ 路径可达」：查 OSV + 基线 diff（每天新出了哪些）
+ex12  空 HMAC key 伪造 → 理解「红→绿」怎么落到第三方库上：同一段代码，两个版本
 ```
 
 > ex10 不是 PoC，是**你自己的复习器**。它抽题、逼你**先答再看答案**、按 1/3/7/14/30 天的
@@ -290,13 +297,19 @@ llm-security-roadmap/
 │   ├── ex07_hitl_fail_closed.py   HITL 判定失效 → fail-closed 三段阶梯
 │   ├── ex08_injection_chain.py    注入链四环 PoC（尾 = F-015，真跑到出网）
 │   ├── ex09_authz_layers.py       权限三层覆盖率盘点（70 个工具扫 AST + 机器判/人判对账）
-│   └── ex10_review.py             间隔复习器（抽题 + 先答后看 + 遗忘曲线排期 + 遗忘日志）
+│   ├── ex10_review.py             间隔复习器（抽题 + 先答后看 + 遗忘曲线排期 + 遗忘日志）
+│   ├── ex11_dep_audit.py          依赖漏洞盘点 + 每日发布追踪（OSV + 基线 diff）
+│   ├── ex12_authlib_empty_hmac.py CVE-2026-114616 红→绿对（空 HMAC key 伪造）
+│   └── _fixed_deps.py             把「修复版」依赖装到独立目录（curl 下 wheel + 本地装）
 ├── specs/                 ← 可落地的规格（零依赖，可进 CI 门禁）
 │   ├── tool_capabilities.py       能力表 + HITL 推导（纯函数，零依赖）
 │   ├── tool_capabilities.md       规格：字段定义 / 推导规则 / 合并算法 / 迁移路径
 │   ├── capabilities_draft.py      机器生成的初稿（人工待审）
 │   └── test_tool_capabilities.py  28 条不变量测试（秒级跑完）
 ├── 自检题.md              ← 每模块自检题（只记题不记答案）
+├── deps/                 ← 依赖 × 公开漏洞的对照
+│   ├── baseline.json            审计基线（入 git → 每天 diff 就是漏洞时间轴）
+│   └── 审计报告.md                靶场依赖与公开漏洞对照表（A/B/C 三档分级）
 ├── reviews/               ← 复习状态与日志（ex10 生成 · 可提交 · 就是遗忘曲线本身）
 │   ├── state.json               每题的阶段 / 上次得分 / 下次到期日
 │   └── 日志.md                   每次复习的流水（漏了哪条判据一目了然）
@@ -359,6 +372,9 @@ backend/A2AServer/src/A2AServer/v2/
 - [判据卡.md](判据卡.md) — **要背的东西**：35 张卡，★★★/★★ 分级，每张带「要说出来」的勾选项
 - [迁移题.md](迁移题.md) — **诊断题**：给一段假代码，问「断在哪一层 / 属于哪档 / 下一步干什么」
 - [exercises/ex10_review.py](exercises/ex10_review.py) — **间隔复习器**：抽题 → 先答后看 → 按遗忘曲线排期 → 记遗忘日志
+- [exercises/ex11_dep_audit.py](exercises/ex11_dep_audit.py) — **依赖漏洞盘点**：查 OSV + 与基线 diff（今天又新出了哪些）
+- [exercises/ex12_authlib_empty_hmac.py](exercises/ex12_authlib_empty_hmac.py) — **CVE-2026-114616 红→绿对**：空 HMAC key 伪造
+- [deps/审计报告.md](deps/审计报告.md) — 靶场依赖与公开漏洞对照表（版本命中 ≠ 路径可达）
 - [notes.md](notes.md) — 概念笔记（持续追加）
 - [record.py](record.py) — 记录工具
 - [exercises/](exercises/) — 可复现脚本
@@ -372,7 +388,8 @@ backend/A2AServer/src/A2AServer/v2/
 1. **先过一遍学习清单 P0**，把威胁框架抄成一张自己的 check 表
 2. **每个模块按「概念讲解 → 对照靶场代码 → 自检题 → 动手任务」四步走**，答完自检题再进下一模块
 3. **每天花 15 分钟跑一次 `ex10_review.py`** —— 这不是可选的复习，是**唯一**能对抗遗忘的方法
-4. **每完成一个模块**，回来把学习清单对应条目标记完成，并补上"我当时不知道但现在知道了"的一行
-5. **发现漏洞立刻记**，不管修没修 —— `findings.md` 是作品集的骨架
-6. **修完必须留证据**：测试先红 → 修 → 绿 → 打 `vuln-XXX`/`fixed-XXX` tag 对 → 接进 CI 门禁
-7. **P2 之后开始公开输出，不要等"准备好"**
+4. **每天顺手跑一次 `ex11_dep_audit.py --diff`** —— 看靶场依赖今天又新中了哪些公开漏洞
+5. **每完成一个模块**，回来把学习清单对应条目标记完成，并补上"我当时不知道但现在知道了"的一行
+6. **发现漏洞立刻记**，不管修没修 —— `findings.md` 是作品集的骨架
+7. **修完必须留证据**：测试先红 → 修 → 绿 → 打 `vuln-XXX`/`fixed-XXX` tag 对 → 接进 CI 门禁
+8. **P2 之后开始公开输出，不要等"准备好"**
